@@ -1,22 +1,10 @@
-import os
 import tweepy as tw
-import pandas as pd
 from collections import Counter
-from nltk.corpus.reader.chasen import test
-from numpy import array
-from keras.preprocessing.text import Tokenizer
 import re
 import string
 from nltk.corpus import stopwords
-from os import listdir
 import nltk
-from numpy.lib.function_base import percentile
 nltk.download('stopwords')
-from keras.models import Sequential
-from keras.layers import Dense
-from keras.utils.vis_utils import plot_model
-from pandas import DataFrame
-from matplotlib import pyplot
 
 consumer_key = 'KnUlN9kEQ7gJdDiVp8oNE1Wg2'
 consumer_secret = 'mRtOVvdiZIzqwdxebqo47WmOBGBvWjIwtZvufDU2E84vlm5QV4'
@@ -49,8 +37,7 @@ def add_tweets_to_file(tweets, filename):
     cleaned_tweets = [clean_tweets(tweet) for tweet in tweets]
     # Combine all tweets to a document, where each tweet is seperated by newline
     reviews = [' '.join(tweet) for tweet in cleaned_tweets]
-    # Remove duplicate tweets
-    reviews = list(set(reviews))
+    print('Number of tweets: %d ' %len(reviews))
     save_list(reviews, filename)
     return None
 
@@ -60,15 +47,21 @@ def save_list(lines, filename):
     file.write(data)
     file.close()
 
+def add_tweets_to_vocab(tweets, vocab):
+    words = ' '.join(tweets)
+    tokens = clean_tweets(words)
+    vocab.update(tokens)
+
+
 # Authenticate with Twitter
 auth = tw.OAuthHandler(consumer_key, consumer_secret)
 auth.set_access_token(access_token, access_token_secret)
 api = tw.API(auth, wait_on_rate_limit=True)
 
 # Define the search term and the date_since date as variables
-search_words = "#moviereview"
+search_words = "#crypto -filter:retweets"
 date_since = "2018-11-16"
-num_of_tweets = 50
+num_of_tweets = 100
 
 # Collect tweets
 tweets = tw.Cursor(api.search,
@@ -76,6 +69,7 @@ tweets = tw.Cursor(api.search,
               lang="en",
               since=date_since).items(num_of_tweets)
 
+#[print('\n\n\n', tweet.text) for tweet in tweets]
 words = [tweet.text for tweet in tweets]
 
 # Save reviews for later use. 
@@ -83,14 +77,15 @@ reviews_filename = 'reviews.txt'
 add_tweets_to_file(words, reviews_filename)
 
 # Create a vocabulary
-words = ' '.join(words)
-tokens = clean_tweets(words)
 vocab = Counter()
 # Add tokens to vocab with their occurence
-vocab.update(tokens)
+add_tweets_to_vocab(words,vocab)
+
 min_occurence = 2
 tokens = [k for k,c in vocab.items() if c >= min_occurence]
 vocab_filename = 'vocab.txt'
 save_list(tokens, vocab_filename)
+
+print('Size of vocab: %d ' % len(vocab.items()))
 
 
