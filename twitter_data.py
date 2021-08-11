@@ -80,7 +80,7 @@ api = tw.API(auth, wait_on_rate_limit=True)
 # Define the search term and the date_since date as variables
 search_words = "#Gamestop OR #gamestop OR #gme AND up OR down -filter:retweets"
 date_since = "2018-11-16"
-num_of_tweets = 1000
+num_of_tweets = 5000
 
 # Collect tweets
 tweets = tw.Cursor(api.search,
