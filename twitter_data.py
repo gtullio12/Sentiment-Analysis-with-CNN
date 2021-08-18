@@ -12,6 +12,9 @@ consumer_key = 'KnUlN9kEQ7gJdDiVp8oNE1Wg2'
 consumer_secret = 'mRtOVvdiZIzqwdxebqo47WmOBGBvWjIwtZvufDU2E84vlm5QV4'
 access_token = '1027293645676769280-2heVzKV4eDN7LDv0Udtk8VkE8Ubj9m'
 access_token_secret = '6RdwPKQbgIX75EcsI3eovdsqhtomqUgsHWo4Lwa1lOwnM'
+auth = tw.OAuthHandler(consumer_key, consumer_secret) # Pass in Consumer key and secret for authentication by API
+auth.set_access_token(access_token, access_token_secret) # Pass in Access key and secret for authentication by API
+api = tw.API(auth, wait_on_rate_limit = True, wait_on_rate_limit_notify = True) # Sleeps when API limit is reached
 sid = SentimentIntensityAnalyzer()
 
 def clean_tweets(tweets):
@@ -44,7 +47,6 @@ def classify_tweet(tweet):
         return 1
     else:
         return 0
-    return 1
 
 # Create a file with one cleaned tweet on each line.
 def add_tweets_to_file(tweets, filename):
@@ -72,24 +74,27 @@ def add_tweets_to_vocab(tweets, vocab):
     tokens = clean_tweets(words)
     vocab.update(tokens)
 
-# Authenticate with Twitter
-auth = tw.OAuthHandler(consumer_key, consumer_secret)
-auth.set_access_token(access_token, access_token_secret)
-api = tw.API(auth, wait_on_rate_limit=True)
-
 # Define the search term and the date_since date as variables
-search_words = "#Gamestop OR #gamestop OR #gme AND up OR down -filter:retweets"
-date_since = "2018-11-16"
-num_of_tweets = 5000
+search_words = '#crypto OR \" crypto will \" OR \" crypto wont \" OR \" crypto won\'t \" OR \" crypto can \" OR \" crypto is \" OR \" crypto isnt \" -filter:links AND -filter:retweets'
+
+num_of_tweets = 20000
+
+words = []
 
 # Collect tweets
-tweets = tw.Cursor(api.search,
+for i in tw.Cursor(api.search,
               q=search_words,
+              since = '2021-01-01', 
+              until = '2021-08-08', 
+              since_id = None,
               lang="en",
-              since=date_since).items(num_of_tweets)
+              tweet_mode = "extended").items(num_of_tweets):
+              words.append(i.full_text)
 
+print('\n\n\n',words)
+print('Amount of tweets: %d ' % len(words))
 #[print('\n\n\n', tweet.text) for tweet in tweets]
-words = [tweet.text for tweet in tweets]
+#words = [tweet.text for tweet in tweets]
 
 # Save reviews for later use. 
 reviews_filename = 'reviews.txt'

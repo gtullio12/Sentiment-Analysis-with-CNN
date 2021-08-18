@@ -1,4 +1,4 @@
-from keras.preprocessing.text import Tokenizer
+from keras.preprocessing.text import Tokenizer 
 from nltk.corpus import stopwords
 import nltk
 import string
@@ -51,7 +51,7 @@ def clean_tweets(tweets, vocab):
     return tokens
 
 # Define CNN
-def define_model(vocab_size, max_length):
+def define_CNN_model(vocab_size, max_length):
     model = Sequential()
     model.add(Embedding(vocab_size, 100, input_length=max_length))
     model.add(Conv1D(filters=32, kernel_size=8, activation= 'relu' ))
@@ -66,16 +66,46 @@ def define_model(vocab_size, max_length):
     plot_model(model, to_file='model.png', show_shapes=True)
     return model
 
+# define the MLP model
+def define_MLP_model(n_words):
+    # define network
+    model = Sequential()
+    model.add(Dense(50, input_shape=(n_words,), activation= 'relu' ))
+    model.add(Dense(1, activation= 'sigmoid' ))
+    # compile network
+    model.compile(loss= 'binary_crossentropy' , optimizer= 'adam' , metrics=['accuracy'])
+    # summarize defined model
+    model.summary()
+    plot_model(model, to_file='model.png' , show_shapes=True)
+    return model
+
 # classify a review as negative or positive
-def predict_sentiment(tweet, vocab, tokenizer, max_length, model):
+def predict_sentiment_CNN(tweet, vocab, tokenizer, max_length, model):
     # clean review
     line = clean_tweets(tweet, vocab)
     # encode and pad review
     padded = encode_tweets(tokenizer, max_length, [line])
     # predict sentiment
     yhat = model.predict(padded, verbose=0)
-    print('yhat: ', yhat)
     # retrieve predicted percentage and label
+    percent_pos = yhat[0,0]
+    if round(percent_pos) == 0:
+        return (1-percent_pos), 'NEGATIVE'
+    return percent_pos, 'POSITIVE'
+
+def predict_sentiment_MLP(tweet, vocab, tokenizer, model):
+    # Clean
+    tokens = clean_tweets(tweet, vocab)
+    # Filter by vocab
+    tokens = [w for w in tokens if w in vocab]
+    # Convert to line
+    line = ' '.join(tokens)
+    # Encode
+    encoded = tokenizer.texts_to_matrix([line], mode='binary')
+    print('size of encoded: ', len(encoded[0]))
+    # Predict sentiment
+    yhat = model.predict(encoded, verbose=0)
+    # Retrieve predicted percentage and label
     percent_pos = yhat[0,0]
     if round(percent_pos) == 0:
         return (1-percent_pos), 'NEGATIVE'
@@ -118,35 +148,61 @@ max_tweet_length = max([len(tweet.split()) for tweet in tweets])
 print('Max tweet size(by words): %d' % max_tweet_length)
 
 # Encode data
-Xtrain = encode_tweets(tokenizer, max_tweet_length, train_tweets)
-Xtest = encode_tweets(tokenizer, max_tweet_length, test_tweets)
-print('Xtrain: ', Xtrain)
-print('Xtest: ', Xtest)
+Xtrain_cnn = encode_tweets(tokenizer, max_tweet_length, train_tweets)
+Xtest_cnn = encode_tweets(tokenizer, max_tweet_length, test_tweets)
+Xtrain_mlp = tokenizer.texts_to_matrix(train_tweets, mode='freq')
+Xtest_mlp = tokenizer.texts_to_matrix(test_tweets, mode='freq')
 
-# Define the model
-#model = define_model(vocab_size, max_tweet_length)
-# Fit the model
-#model.fit(Xtrain, train_classifications, epochs=10, verbose=2)
-# Save the model
-#model.save('model.h5')
+# Define the CNN model
+#cnn_model = define_CNN_model(vocab_size, max_tweet_length)
+## Fit the model
+#cnn_model.fit(Xtrain_cnn, train_classifications, epochs=50, verbose=2)
+## Save the model
+#cnn_model.save('cnn_model.h5')
+#
+## Define the MLP model
+#n_words = Xtest_mlp.shape[1]
+#print('n_words: ', n_words)
+#mlp_model = define_MLP_model(n_words)
+## Fit the model
+#mlp_model.fit(Xtrain_mlp, train_classifications, epochs=100,verbose=2)
+## Evaluate the model
+#loss, acc = mlp_model.evaluate(Xtest_mlp, test_classifications, verbose=0)
+#print('Test accuracy: %f ' % (acc*100))
+#mlp_model.save('mlp_model.h5')
 
-# evaluate model on training dataset
-model = load_model('model.h5')
-_, acc = model.evaluate(Xtrain, train_classifications, verbose=0)
-print('Train Accuracy: %.2f '% (acc*100))
+
+# evaluate MLP model on training dataset
+mlp_model = load_model('mlp_model.h5')
+_, acc = mlp_model.evaluate(Xtrain_mlp, train_classifications, verbose=0)
+print('Train Accuracy for MLP model: %.2f '% (acc*100))
 # evaluate model on test dataset
-_, acc = model.evaluate(Xtest, test_classifications, verbose = 0)
-print('Test Accuracy: %.2f ' % (acc*100))
+_, acc = mlp_model.evaluate(Xtest_mlp, test_classifications, verbose = 0)
+print('Test Accuracy for MLP model: %.2f ' % (acc*100))
+
+# Evaluate CNN model on training and test dataset
+cnn_model = load_model('cnn_model.h5')
+_, acc = cnn_model.evaluate(Xtrain_cnn, train_classifications, verbose=0)
+print('Train Accuracy for CNN model: %.2f '% (acc*100))
+# evaluate model on test dataset
+_, acc = cnn_model.evaluate(Xtest_cnn, test_classifications, verbose = 0)
+print('Test Accuracy for CNN model: %.2f ' % (acc*100))
+
 
 # Manual testing
-text = 'I think Gamestop will definitley go up!! #Gamestop'
-percent, sentiment = predict_sentiment(text, vocab, tokenizer, max_tweet_length, model)
-print('Review: [%s]\nSentiment: %s (%.3f%%) ' % (text, sentiment, percent*100))
+text = 'crypto will definitley go up. It has a bright future! #bitcoin'
+percent, sentiment = predict_sentiment_MLP(text, vocab, tokenizer, mlp_model)
+print('MLP model, Review: [%s]\nSentiment: %s (%.3f%%) ' % (text, sentiment, percent*100))
 
-text = 'I think Gamestop will definitley go down!! #gme #fail'
-percent, sentiment = predict_sentiment(text, vocab, tokenizer, max_tweet_length, model)
-print('Review: [%s]\nSentiment: %s (%.3f%%) ' % (text, sentiment, percent*100))
+text = 'crypto will die soon!!! Please dont buy'
+percent, sentiment = predict_sentiment_MLP(text, vocab, tokenizer, mlp_model)
+print('MLP model, Review: [%s]\nSentiment: %s (%.3f%%) ' % (text, sentiment, percent*100))
+print('\n')
 
-text = 'GME has potential. Event y occured so there is a good chance it will go up #gme #success'
-percent, sentiment = predict_sentiment(text, vocab, tokenizer, max_tweet_length, model)
-print('Review: [%s]\nSentiment: %s (%.3f%%) ' % (text, sentiment, percent*100))
+text = 'crypto will definitley go up. It has a bright future! #bitcoin'
+percent, sentiment = predict_sentiment_CNN(text, vocab, tokenizer, max_tweet_length, cnn_model)
+print('CNN model, Review: [%s]\nSentiment: %s (%.3f%%) ' % (text, sentiment, percent*100))
+
+text = 'crypto will die soon!!! Please dont buy'
+percent, sentiment = predict_sentiment_CNN(text, vocab, tokenizer, max_tweet_length, cnn_model)
+print('CNN model, Review: [%s]\nSentiment: %s (%.3f%%) ' % (text, sentiment, percent*100))
