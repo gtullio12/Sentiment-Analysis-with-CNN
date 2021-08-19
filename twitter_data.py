@@ -91,7 +91,7 @@ for i in tw.Cursor(api.search,
               tweet_mode = "extended").items(num_of_tweets):
               words.append(i.full_text)
 
-print('\n\n\n',words)
+#print('\n\n\n',words)
 print('Amount of tweets: %d ' % len(words))
 #[print('\n\n\n', tweet.text) for tweet in tweets]
 #words = [tweet.text for tweet in tweets]
@@ -104,9 +104,10 @@ add_tweets_to_file(words, reviews_filename)
 vocab = Counter()
 # Add tokens to vocab with their occurence
 add_tweets_to_vocab(words,vocab)
-
+# Filter out unique words.
 min_occurence = 2
 tokens = [k for k,c in vocab.items() if c >= min_occurence]
+# Save vocab to file.
 vocab_filename = 'vocab.txt'
 save_list(tokens, vocab_filename)
 

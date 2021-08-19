@@ -3,6 +3,7 @@ from nltk.corpus import stopwords
 import nltk
 import string
 import re
+import sys
 nltk.download('stopwords')
 from keras.preprocessing.text import Tokenizer
 from keras.utils.vis_utils import plot_model
@@ -17,6 +18,8 @@ from nltk.corpus.reader.knbc import test
 from nltk.util import pad_sequence
 from numpy import array
 from keras.models import load_model
+
+sys.stdout = open('output.txt', 'w')
 
 # Fit a tokenizer
 def create_tokenizer(lines):
@@ -63,7 +66,7 @@ def define_CNN_model(vocab_size, max_length):
     model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
     # summarize defined model
     model.summary()
-    plot_model(model, to_file='model.png', show_shapes=True)
+    plot_model(model, to_file='model_cnn.png', show_shapes=True)
     return model
 
 # define the MLP model
@@ -76,7 +79,7 @@ def define_MLP_model(n_words):
     model.compile(loss= 'binary_crossentropy' , optimizer= 'adam' , metrics=['accuracy'])
     # summarize defined model
     model.summary()
-    plot_model(model, to_file='model.png' , show_shapes=True)
+    plot_model(model, to_file='model_mlp.png' , show_shapes=True)
     return model
 
 # classify a review as negative or positive
@@ -154,23 +157,19 @@ Xtrain_mlp = tokenizer.texts_to_matrix(train_tweets, mode='freq')
 Xtest_mlp = tokenizer.texts_to_matrix(test_tweets, mode='freq')
 
 # Define the CNN model
-#cnn_model = define_CNN_model(vocab_size, max_tweet_length)
-## Fit the model
-#cnn_model.fit(Xtrain_cnn, train_classifications, epochs=50, verbose=2)
-## Save the model
-#cnn_model.save('cnn_model.h5')
-#
-## Define the MLP model
-#n_words = Xtest_mlp.shape[1]
-#print('n_words: ', n_words)
-#mlp_model = define_MLP_model(n_words)
-## Fit the model
-#mlp_model.fit(Xtrain_mlp, train_classifications, epochs=100,verbose=2)
-## Evaluate the model
-#loss, acc = mlp_model.evaluate(Xtest_mlp, test_classifications, verbose=0)
-#print('Test accuracy: %f ' % (acc*100))
-#mlp_model.save('mlp_model.h5')
+cnn_model = define_CNN_model(vocab_size, max_tweet_length)
+# Fit the model
+cnn_model.fit(Xtrain_cnn, train_classifications, epochs=50, verbose=2)
+# Save the model
+cnn_model.save('cnn_model.h5')
 
+# Define the MLP model
+n_words = Xtest_mlp.shape[1]
+mlp_model = define_MLP_model(n_words)
+# Fit the model
+mlp_model.fit(Xtrain_mlp, train_classifications, epochs=100,verbose=2)
+# Save model
+mlp_model.save('mlp_model.h5')
 
 # evaluate MLP model on training dataset
 mlp_model = load_model('mlp_model.h5')
@@ -206,3 +205,5 @@ print('CNN model, Review: [%s]\nSentiment: %s (%.3f%%) ' % (text, sentiment, per
 text = 'crypto will die soon!!! Please dont buy'
 percent, sentiment = predict_sentiment_CNN(text, vocab, tokenizer, max_tweet_length, cnn_model)
 print('CNN model, Review: [%s]\nSentiment: %s (%.3f%%) ' % (text, sentiment, percent*100))
+
+sys.stdout.close()
